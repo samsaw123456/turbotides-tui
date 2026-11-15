@@ -11,6 +11,9 @@ also exercised Ubuntu OpenJDK 25.0.4.1. The original Turbo Tides workspace was n
   Tests cover original physics/rules, six circuits, both paces, collisions,
   drift/pads, fixed-step timing, input expiry, audio samples, records failure
   recovery, visible asphalt/car alignment, boundary clipping and time formatting.
+  The checks also passed with ALSA configuration disabled. The cache regression
+  distinguishes an unchanged idle view from legitimate asynchronous audio-status
+  invalidation; an earlier CI assertion incorrectly conflated those cases.
 - **306 ANSI coverage rows passed**: 235 main control cases, 46 results-screen
   cases across both pace campaigns, 14 quit cases, two records cases, two save-error
   cases, one contact scenario and six earned-record recovery cases. See the [complete binding/state table](CONTROLS.md).

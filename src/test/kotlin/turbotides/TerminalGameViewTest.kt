@@ -19,15 +19,13 @@ class TerminalGameViewTest {
         try {
             val garage = game.view()
             repeat(3) {
-                game.update(FrameTick())
-                assertSame(garage, game.view(), "Idle ticks must reuse the rendered string")
+                assertStaticTick(game)
             }
             game.update(KeyPressMessage(Key(KeyType.KeyUp)))
             val selected = game.view()
             assertNotSame(garage, selected)
             assertEquals(2, game.menuFocus)
-            game.update(FrameTick())
-            assertSame(selected, game.view())
+            assertStaticTick(game)
             val destination = dir.resolve("records.properties")
             Files.delete(destination)
             Files.createDirectory(destination)
@@ -49,13 +47,26 @@ class TerminalGameViewTest {
             game.update(FrameTick())
             assertNotSame(countdown, game.view(), "Active simulation must continue rendering")
             game.update(KeyPressMessage(Key(KeyType.keyESC)))
-            val paused = game.view()
+            game.view()
             assertEquals(Phase.PAUSED, game.race.phase)
-            game.update(FrameTick())
-            assertSame(paused, game.view(), "Paused simulation must reuse its art")
+            assertStaticTick(game)
         } finally {
             game.close()
             dir.toFile().deleteRecursively()
+        }
+    }
+
+    private fun assertStaticTick(game: TerminalGame) {
+        val status = game.audioStatus
+        val before = game.view()
+        game.update(FrameTick())
+        val after = game.view()
+        if (status == game.audioStatus) {
+            assertSame(before, after, "Idle ticks with unchanged status must reuse their art")
+        } else {
+            // Device initialization is asynchronous. A status change correctly
+            // invalidates the cache, but this muted scene must look identical.
+            assertEquals(before, after, "Muted audio initialization must not change the picture")
         }
     }
 }
