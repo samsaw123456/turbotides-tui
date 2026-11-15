@@ -122,9 +122,9 @@ def capture(terminal: Terminal, label: str) -> dict:
             if input_port is None:
                 raise RuntimeError("Isolated recording port did not appear.")
             command("pw-link", str(output_port), str(input_port))
-            terminal.save(f"audio-{label}-before")
+            before = terminal.save(f"audio-{label}-before")
             terminal.pump(0.8)
-            terminal.save(f"audio-{label}-after")
+            after = terminal.save(f"audio-{label}-after")
         finally:
             recording.send_signal(signal.SIGINT)
             try:
@@ -136,7 +136,9 @@ def capture(terminal: Terminal, label: str) -> dict:
     samples.frombytes(filename.read_bytes())
     require(len(samples) >= 1000, f"Only {len(samples)} PCM samples in {label}.")
     return {
-        "phase": terminal.state()["phase"],
+        # Report the captured interval, not the later recorder-shutdown moment.
+        "phase_before": before["phase"],
+        "phase": after["phase"],
         "samples": len(samples),
         "peak": max(abs(value) for value in samples),
         "rms": round(
@@ -208,6 +210,15 @@ def main() -> None:
         terminal.key("Enter", 0.1)
         terminal.key("M", 0.3)
         result["countdown-muted"] = capture(terminal, "countdown-muted")
+        for label, captured in result.items():
+            if isinstance(captured, dict):
+                expected_phase = (
+                    "RACING" if label == "resumed" else label.split("-", 1)[0].upper()
+                )
+                require(
+                    captured["phase_before"] == captured["phase"] == expected_phase,
+                    f"{label} crossed phases during capture: {captured}",
+                )
         for label in (
             "garage-muted",
             "racing-muted",

@@ -1,8 +1,9 @@
 #!/bin/sh
-# Per-user installation: no sudo, no shell-profile edits, no global Java changes.
+# Game and Java install per-user; missing OS utilities use the native package manager.
 set -eu
 repo=samsaw123456/turbotides-tui
-install_dir=${XDG_DATA_HOME:-$HOME/.local/share}/turbotides-tui/app
+case ${XDG_DATA_HOME:-} in /*) data_dir=$XDG_DATA_HOME ;; *) data_dir=$HOME/.local/share ;; esac
+install_dir=$data_dir/turbotides-tui/app
 bin_dir=$HOME/.local/bin
 desktop=yes
 local_install=no
@@ -14,7 +15,8 @@ Usage: sh install.sh [--local] [--private-java] [--prefix DIRECTORY] [--bin-dir 
        sh install.sh --uninstall [--prefix DIRECTORY] [--bin-dir DIRECTORY] [--no-desktop]
 
 Downloads the latest public release and installs Java 25 if needed. --local uses
-this extracted release or builds this checkout. Everything installs per-user.
+this extracted release or builds this checkout. The game and Java install per-user.
+Missing OS utilities are installed with your package manager (may require sudo).
 --prefix changes the game directory; --bin-dir changes the command directory.
 --no-desktop skips application-menu/Dock integration. Rerun to update or repair.
 --private-java downloads the latest private Java 25 even when system Java exists.
@@ -44,7 +46,107 @@ marker=.turbotides-tui-managed
 platform=$(uname -s)
 case "$platform" in Linux) java_os=linux ;; Darwin) java_os=mac ;; *) die "Unsupported OS: $platform (Linux and macOS supported)" ;; esac
 case "$(uname -m)" in x86_64|amd64) java_arch=x64 ;; arm64|aarch64) java_arch=aarch64 ;; *) die 'Only x86-64 and ARM64 are supported.' ;; esac
-data_dir=${XDG_DATA_HOME:-$HOME/.local/share}
+# Keep this bootstrap inline: install.sh must work before it can download helpers.
+packages=
+need_package() {
+    case " $packages " in *" $1 "*) ;; *) packages="$packages $1" ;; esac
+}
+has_hash() {
+    command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1 || command -v openssl >/dev/null 2>&1
+}
+has_ca_store() {
+    # macOS supplies native trust. Explicit TLS settings belong to the caller;
+    # do not replace them, including deliberately restricted enterprise stores.
+    [ "$platform" = Darwin ] && return 0
+    [ -z "${CURL_CA_BUNDLE:-}${SSL_CERT_FILE:-}${SSL_CERT_DIR:-}" ] || return 0
+    for ca_bundle in /etc/ssl/certs/ca-certificates.crt /etc/ssl/cert.pem \
+        /etc/pki/tls/certs/ca-bundle.crt /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem \
+        /var/lib/ca-certificates/ca-bundle.pem /etc/ssl/ca-bundle.pem \
+        /etc/ssl/certs/*.0 /etc/pki/tls/certs/*.0; do
+        if [ -r "$ca_bundle" ] && [ -s "$ca_bundle" ]; then return 0; fi
+    done
+    return 1
+}
+has_terminal() {
+    for terminal in xdg-terminal-exec x-terminal-emulator gnome-terminal kgx ptyxis konsole xfce4-terminal mate-terminal tilix xterm kitty alacritty foot wezterm ghostty; do
+        if command -v "$terminal" >/dev/null 2>&1; then return 0; fi
+    done
+    return 1
+}
+install_packages() {
+    if [ "$platform" = Darwin ]; then
+        command -v brew >/dev/null 2>&1 || die "Missing OS utilities:$packages. Restore the macOS command-line utilities or install Homebrew, then rerun."
+        # Homebrew uses different names for the GNU replacements of BSD tools.
+        brew_packages=
+        for package in $packages; do
+            case "$package" in sed) package=gnu-sed ;; tar) package=gnu-tar ;; esac
+            brew_packages="$brew_packages $package"
+        done
+        printf 'Installing missing OS utilities with Homebrew:%s\n' "$brew_packages"
+        # Both lists contain only the fixed package names selected below.
+        # shellcheck disable=SC2086
+        brew install $brew_packages || die 'Homebrew could not install the required utilities.'
+        for package in $brew_packages; do
+            brew_prefix=$(brew --prefix "$package")
+            PATH=$brew_prefix/libexec/gnubin:$brew_prefix/bin:$PATH
+        done
+        export PATH
+        return
+    fi
+    manager=
+    for candidate in apt-get dnf yum pacman zypper; do
+        if command -v "$candidate" >/dev/null 2>&1; then manager=$candidate; break; fi
+    done
+    [ -n "$manager" ] || die "Missing OS utilities:$packages. No supported package manager found (apt-get, dnf, yum, pacman, zypper)."
+    elevation=
+    id_command=$(command -v id || printf /usr/bin/id)
+    if [ "$("$id_command" -u)" != 0 ]; then
+        if command -v sudo >/dev/null 2>&1; then elevation=sudo
+        elif command -v doas >/dev/null 2>&1; then elevation=doas
+        else die "Installing missing OS utilities ($packages) requires root, sudo, or doas; the game itself installs per-user."
+        fi
+    fi
+    printf 'Installing missing OS utilities with %s:%s\n' "$manager" "$packages"
+    # shellcheck disable=SC2086 # fixed package names, optional elevation command
+    case "$manager" in
+        apt-get) $elevation apt-get update && $elevation apt-get install -y --no-install-recommends $packages ;;
+        dnf|yum) $elevation "$manager" install -y $packages ;;
+        pacman) $elevation pacman -S --needed --noconfirm $packages ;;
+        zypper) $elevation zypper --non-interactive install $packages ;;
+    esac || die 'The package manager could not install the required utilities. The existing game was kept.'
+}
+if [ "$uninstall" = no ]; then
+    # Prefer installed alternatives before asking a package manager to do work.
+    if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then need_package curl; fi
+    if ! has_ca_store; then need_package ca-certificates; fi
+    for required in tar gzip sed awk mktemp grep env head dirname readlink mkdir cp mv rm rmdir ln chmod cat id; do
+        if ! command -v "$required" >/dev/null 2>&1; then
+            case "$required" in
+                tar|gzip|sed|grep) need_package "$required" ;;
+                awk) need_package gawk ;;
+                *) need_package coreutils ;;
+            esac
+        fi
+    done
+    if ! has_hash; then need_package coreutils; fi
+    if [ "$desktop" = yes ] && [ "$platform" = Linux ] && ! has_terminal; then
+        if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then need_package xterm
+        else
+            desktop=no
+            printf '%s\n' 'No graphical terminal/session detected; installing the command only. Rerun from your desktop to add the app icon.'
+        fi
+    fi
+    [ -z "$packages" ] || install_packages
+    for required in tar gzip sed awk mktemp grep env head dirname readlink mkdir cp mv rm rmdir ln chmod cat id; do
+        command -v "$required" >/dev/null 2>&1 || die "Required utility $required is still unavailable after dependency installation."
+    done
+    command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1 || die 'curl or wget is still unavailable after dependency installation.'
+    has_hash || die 'A SHA-256 tool is still unavailable after dependency installation.'
+    has_ca_store || die 'A trusted CA certificate store is still unavailable after dependency installation. HTTPS verification remains enabled.'
+    if [ "$desktop" = yes ] && [ "$platform" = Linux ]; then
+        has_terminal || die 'A terminal emulator is still unavailable. Use --no-desktop for a command-only installation.'
+    fi
+fi
 mac_app="${TURBOTIDES_APPLICATIONS_DIR:-$HOME/Applications}/Turbo Tides TUI.app"
 desktop_file=$data_dir/applications/turbotides-tui.desktop
 desktop_icon=$data_dir/icons/hicolor/512x512/apps/turbotides-tui.png
@@ -84,12 +186,6 @@ if [ "$uninstall" = yes ]; then
     printf '%s\n' 'Turbo Tides TUI uninstalled. Your race records have been preserved.'
     exit 0
 fi
-for required in curl tar sed awk mktemp grep env; do
-    command -v "$required" >/dev/null 2>&1 || die "Missing $required. Install it with your system package manager, then rerun this command."
-done
-if command -v sha256sum >/dev/null 2>&1; then hash_cmd=sha256sum
-elif command -v shasum >/dev/null 2>&1; then hash_cmd='shasum -a 256'
-else die 'A SHA-256 tool is required (sha256sum or shasum).'; fi
 work=$(mktemp -d "${TMPDIR:-/tmp}/turbotides-install.XXXXXXXX")
 stage=
 backup=
@@ -101,13 +197,21 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-download() { curl --fail --location --show-error --silent --retry 3 --connect-timeout 20 --proto '=https' --tlsv1.2 "$1" -o "$2"; }
+download() {
+    if command -v curl >/dev/null 2>&1; then
+        curl --fail --location --show-error --silent --retry 3 --connect-timeout 20 --proto '=https' --tlsv1.2 "$1" -o "$2"
+    else
+        wget --https-only --secure-protocol=TLSv1_2 --tries=3 --timeout=20 --quiet -O "$2" "$1"
+    fi
+}
 verify() {
     expected=$1
     case "$expected" in *[!0-9a-fA-F]*|'') die 'Invalid SHA-256 metadata.' ;; esac
     [ "${#expected}" = 64 ] || die 'Invalid SHA-256 length.'
-    # hash_cmd contains only one of the fixed commands selected above.
-    actual=$($hash_cmd "$2" | awk '{print $1}')
+    # Hash stdin so GNU filename escaping cannot change the digest field.
+    if command -v sha256sum >/dev/null 2>&1; then actual=$(sha256sum < "$2" | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then actual=$(shasum -a 256 < "$2" | awk '{print $1}')
+    else actual=$(openssl dgst -sha256 < "$2" | awk '{print $NF}'); fi
     [ "$actual" = "$expected" ] || die "Checksum mismatch: $2"
 }
 if [ "$local_install" = yes ]; then
@@ -152,6 +256,12 @@ fi
 printf 'Using %s\n' "$TURBOTIDES_JAVA"
 if [ "$java_kind" = jdk ]; then
     [ -x "$source_dir/gradlew" ] || die 'No game JAR or Gradle wrapper was found.'
+    if ! command -v xargs >/dev/null 2>&1; then
+        packages=
+        need_package findutils
+        install_packages
+        command -v xargs >/dev/null 2>&1 || die 'Building from source requires xargs.'
+    fi
     JAVA_HOME=${TURBOTIDES_JAVA%/bin/java} "$source_dir/gradlew" -p "$source_dir" --no-daemon check fatJar
     game_jar=$source_dir/build/libs/turbotides-tui.jar
 else game_jar=$source_dir/turbotides-tui.jar; fi
@@ -167,6 +277,7 @@ mkdir "$stage/scripts" "$stage/assets"
 cp -- "$game_jar" "$stage/turbotides-tui.jar"
 cp -- "$source_dir/turbotides-tui" "$stage/turbotides-tui"
 cp -- "$source_dir/scripts/java.sh" "$stage/scripts/java.sh"
+cp -- "$source_dir/install.sh" "$stage/install.sh"
 for filename in icon-512.png icon-128.png icon.svg icon.icns; do
     [ ! -f "$source_dir/assets/$filename" ] || cp -- "$source_dir/assets/$filename" "$stage/assets/$filename"
 done
@@ -186,6 +297,7 @@ elif [ -d "$install_dir/runtime" ]; then
     cp -R -- "$install_dir/runtime" "$stage/runtime"
 fi
 case "$TURBOTIDES_JAVA" in "$work"/*|"$install_dir"/*) ;; *) printf '%s\n' "$TURBOTIDES_JAVA" > "$stage/java.path" ;; esac
+printf '%s\n' "$bin_dir" > "$stage/bin.path"
 printf '%s\n' 'Managed by the Turbo Tides TUI installer.' > "$stage/$marker"
 chmod +x "$stage/turbotides-tui"
 if [ -d "$install_dir" ]; then

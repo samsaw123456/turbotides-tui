@@ -9,8 +9,11 @@ devices leave the game playable with a visible unavailable status.
 ## Real device-output audit
 
 Run on Linux with PipeWire and Temurin 25.0.5+8, 2026-11-15.
-Final tested JAR SHA-256: `0fb51303f953457b92d44ce4b04ce1698f6d3530fe4ddcebebb90dc108878c61`.
+Final tested JAR SHA-256: `fc5734af39bcc17ac9c91758a7518b612168860558dbce09546b0c112627a490`.
 The audit checks the artifact hash again at the end to reject a concurrent rebuild.
+Each capture records the phase before and after its measured interval, rather
+than sampling the phase later during recorder shutdown; both must match the
+expected state. This avoids mislabelling a countdown that finishes afterward.
 
 Reproduce with:
 
@@ -27,28 +30,28 @@ It does not change volume, mute, default devices, or other applications' links.
 
 The actual run passed all assertions. Each mute and pause case produced exactly
 zero-valued PCM samples; enabling sound and resuming restored nonzero output. The run
-also completed a real three-lap Sunset Run in 45.84 seconds, first of six, with
-three turbo pads and no collisions, then tested finished-screen mute and retry
+also completed a real three-lap Sunset Run in 43.67 seconds, first of six, with
+6 turbo pads and 0 collisions, then tested finished-screen mute and retry
 countdown mute. Game state was observed through opt-in diagnostics; every action
 entered through the terminal, with no simulation acceleration or state injection.
 
 | Capture | Game phase | Samples | Peak absolute PCM | RMS |
 | --- | --- | ---: | ---: | ---: |
-| garage-on | GARAGE | 57,360 | 3060 | 487.548 |
-| garage-muted | GARAGE | 40,191 | 0 | 0.0 |
-| garage-restored | GARAGE | 36,663 | 3011 | 488.322 |
-| countdown-on | COUNTDOWN | 35,487 | 3199 | 530.477 |
-| racing-on | RACING | 34,546 | 2076 | 717.179 |
-| racing-muted | RACING | 36,428 | 0 | 0.0 |
-| racing-restored | RACING | 47,012 | 2427 | 767.813 |
-| paused | PAUSED | 42,543 | 0 | 0.0 |
-| paused-muted | PAUSED | 43,719 | 0 | 0.0 |
-| paused-unmuted | PAUSED | 51,951 | 0 | 0.0 |
-| resumed | RACING | 43,484 | 2424 | 777.911 |
-| finished-on | FINISHED | 29,372 | 4536 | 1149.936 |
-| finished-muted | FINISHED | 38,309 | 0 | 0.0 |
-| finished-restored | FINISHED | 45,365 | 2989 | 504.517 |
-| countdown-muted | COUNTDOWN | 40,191 | 0 | 0.0 |
+| garage-on | GARAGE | 36,898 | 3199 | 555.983 |
+| garage-muted | GARAGE | 30,077 | 0 | 0.0 |
+| garage-restored | GARAGE | 28,196 | 2991 | 548.685 |
+| countdown-on | COUNTDOWN | 32,664 | 3266 | 516.875 |
+| racing-on | RACING | 33,605 | 2580 | 766.835 |
+| racing-muted | RACING | 34,781 | 0 | 0.0 |
+| racing-restored | RACING | 29,372 | 2321 | 780.672 |
+| paused | PAUSED | 29,372 | 0 | 0.0 |
+| paused-muted | PAUSED | 31,018 | 0 | 0.0 |
+| paused-unmuted | PAUSED | 43,013 | 0 | 0.0 |
+| resumed | RACING | 29,136 | 2410 | 779.101 |
+| finished-on | FINISHED | 31,018 | 4337 | 1142.034 |
+| finished-muted | FINISHED | 33,370 | 0 | 0.0 |
+| finished-restored | FINISHED | 28,901 | 3028 | 529.331 |
+| countdown-muted | COUNTDOWN | 25,608 | 0 | 0.0 |
 
 Local reproducible evidence lives in `build/audio-audit/results.json`, the
 adjacent raw 22,050 Hz signed 16-bit mono `.pcm` files, and

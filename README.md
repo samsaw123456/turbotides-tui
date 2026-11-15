@@ -25,17 +25,25 @@ sh /tmp/turbotides-install.sh
 ~/.local/bin/turbotides-tui
 ```
 
+Without `curl`, [download the installer](https://raw.githubusercontent.com/samsaw123456/turbotides-tui/main/install.sh)
+in your browser and run `sh install.sh` from its download directory.
+
 The installer checks dependencies, verifies the release checksum, finds Java 25
 or installs a private Temurin runtime, and adds an application launcher with the
-original icon. It needs no administrator password and leaves system Java alone.
+original orange, cream, and teal icon. It leaves system Java alone. Missing
+system tools are installed through your package manager; only that step may
+need your administrator password. On headless Linux, installation stays
+command-line only. [Supported systems and dependency setup](docs/INSTALLATION.md).
 Use `sh /tmp/turbotides-install.sh --private-java` to always install the latest
-Temurin 25 patch in a private runtime. Linux gets an application-menu entry; macOS gets `~/Applications/Turbo Tides TUI.app`
+Temurin 25 patch in a private runtime. Linux gets an application-menu entry;
+macOS gets `~/Applications/Turbo Tides TUI.app`
 for Terminal.app and your Dock. [Installation, updates, and removal](docs/INSTALLATION.md).
 
 Use a UTF-8 terminal with true color; **100 × 34 or larger** is comfortable.
 The minimum is 64 × 24. Apple Terminal uses a 256-color fallback;
 set `TURBOTIDES_COLOR=truecolor` on macOS Tahoe 26 or newer for full color,
-or `TURBOTIDES_COLOR=256` to force indexed color in any terminal. Letter bindings are unshifted keys. Resize smaller and the race pauses. Everything works
+or `TURBOTIDES_COLOR=256` to force indexed color in any terminal. Letter bindings
+are unshifted keys. Resize smaller and the race pauses. Everything works
 offline after installation. No accounts, ads, uploads, or game telemetry service.
 
 ## Pick your circuit
@@ -113,21 +121,34 @@ in the per-user data directory. `--data-dir DIR` gives an isolated profile;
 `--telemetry FILE` enables local diagnostic JSON for playtests and changes no
 rules. `--help` lists command-line options.
 
+If saving fails, the result says **Personal best pending save**. Repair the
+reported location, then toggle M or N to retry the save. The earned best survives
+retries and circuit changes while the game is open; it is stored on disk only
+after a successful save. Keep the game open until the warning clears.
+
 ## Build, verify, contribute
 
 ```sh
-./turbotides-tui                  # discover JDK 25, build, then play
+./turbotides-tui                  # set up JDK 25 if missing, build, then play
 ./gradlew check fatJar            # lint, compile, regression tests, executable JAR
 ./gradlew ktlintFormat            # format Kotlin
 ./install.sh --local              # build and install this checkout
 python3 tools/package_release.py --skip-build
 ```
 
+In Zed, the **Play Turbo Tides TUI** project task opens the game in a terminal.
+`make play` uses the same launcher. First use can download Java and build tools;
+the installed release needs neither Gradle nor a source checkout to play.
+Run `./install.sh --local` to add the application icon when working from source.
+
 The wrapper pins Gradle **9.9.1** with its distribution checksum. Kotlin
 **2.4.21**, tui4j **0.3.5**, and the ktlint plugin **14.2.0** are pinned to
-published stable releases checked on November 14, 2026. The JVM target is **25**.
+published stable releases checked on November 15, 2026. The JVM target is **25**.
 Set `JAVA_HOME` to JDK 25 for direct Gradle commands. The launcher and installer
 discover Java independently; Gradle is downloaded by the wrapper.
+Kotlin's [fully supported Gradle range](https://kotlinlang.org/docs/gradle-configure-project.html)
+currently ends at 9.7.0; the requested current 9.9.1 combination passes this
+project's builds and tests.
 
 The [verification record](docs/VERIFICATION.md) inventories every binding and
 state, records real PTY/ANSI playtests, and lists platform limits. Tests never
@@ -135,6 +156,10 @@ accelerate races or mutate the running simulation. To reproduce the terminal
 audit, install `tools/audit-requirements.txt` in a virtual environment and run
 `python tools/ansi_audit.py --help`. [Design decisions](docs/DESIGN.md) describe
 what changed for the medium.
+
+The [recent-session quality review](docs/QUALITY_REVIEW.md) connects your
+gameplay, auditing, installation, and performance requirements to concrete
+evidence and records the follow-up fixes.
 
 Code and original assets: Apache-2.0. Phippy/Goldie and library notices are in
 [THIRD_PARTY.md](THIRD_PARTY.md). This independent game is not endorsed by CNCF

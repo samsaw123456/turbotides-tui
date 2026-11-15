@@ -10,21 +10,66 @@ done
 app_dir=$(CDPATH='' cd -- "$(dirname -- "$launcher")" && pwd)
 # shellcheck source=scripts/java.sh
 . "$app_dir/scripts/java.sh"
-if ! find_java_25; then
-    printf '%s\n' 'Java 25 is required. Run ./install.sh, or set TURBOTIDES_JAVA_HOME to your JDK 25.' >&2
-    exit 1
-fi
+bootstrap_java() {
+    # An explicit override is a configuration error, not consent to ignore it.
+    [ -z "${TURBOTIDES_JAVA_HOME:-}" ] || exit 1
+    [ -f "$app_dir/install.sh" ] || {
+        printf '%s\n' 'Java 25 is missing and this copy has no installer. Download a complete release to repair it.' >&2
+        exit 1
+    }
+    printf '%s\n' 'Setting up Java 25 and the game for your user…'
+    if [ -f "$app_dir/.turbotides-tui-managed" ]; then
+        # Repair in place, retaining custom install locations and the icon.
+        IFS= read -r bootstrap_bin < "$app_dir/bin.path"
+        sh "$app_dir/install.sh" --local --no-desktop --prefix "$app_dir" --bin-dir "$bootstrap_bin"
+        exec "$app_dir/turbotides-tui" "$@"
+    else
+        sh "$app_dir/install.sh" --local --no-desktop
+        exec "$HOME/.local/bin/turbotides-tui" "$@"
+    fi
+}
+if ! find_java_25; then bootstrap_java "$@"; fi
+source_snapshot=
 if [ -f "$app_dir/turbotides-tui.jar" ]; then
     game_jar=$app_dir/turbotides-tui.jar
 elif [ -x "$app_dir/gradlew" ]; then
     if ! find_java_25 jdk; then
-        printf '%s\n' 'Building from source requires JDK 25. Run ./install.sh --local to install dependencies.' >&2
-        exit 1
+        bootstrap_java "$@"
     fi
     JAVA_HOME=${TURBOTIDES_JAVA%/bin/java} "$app_dir/gradlew" -p "$app_dir" --quiet fatJar
-    game_jar=$app_dir/build/libs/turbotides-tui.jar
+    # Gradle can truncate its archive during another build. A running JVM must
+    # keep reading the same bytes when classes/resources are loaded later.
+    source_snapshot=$(mktemp -d "${TMPDIR:-/tmp}/turbotides-run.XXXXXXXX")
+    trap 'rm -rf -- "$source_snapshot"' EXIT
+    game_jar=$source_snapshot/turbotides-tui.jar
+    cp -- "$app_dir/build/libs/turbotides-tui.jar" "$game_jar"
 else
     printf '%s\n' 'The game JAR is missing. Run the installer again to repair the installation.' >&2
     exit 1
+fi
+if [ -n "$source_snapshot" ]; then
+    game_pid=
+    # shellcheck disable=SC2329 # invoked by the signal traps below
+    stop_source_game() {
+        exit_status=$1
+        trap '' INT TERM HUP
+        if [ -n "$game_pid" ]; then
+            kill -TERM "$game_pid" 2>/dev/null || true
+            wait "$game_pid" 2>/dev/null || true
+        fi
+        exit "$exit_status"
+    }
+    trap 'stop_source_game 130' INT
+    trap 'stop_source_game 143' TERM
+    trap 'stop_source_game 129' HUP
+    # Preserve stdin before sh gives asynchronous commands /dev/null. Waiting
+    # in the shell lets signals forward and the private JAR be removed.
+    exec 3<&0
+    "$TURBOTIDES_JAVA" --enable-native-access=ALL-UNNAMED -Xms32m -Xmx384m -jar "$game_jar" "$@" <&3 3<&- &
+    game_pid=$!
+    exec 3<&-
+    status=0
+    wait "$game_pid" || status=$?
+    exit "$status"
 fi
 exec "$TURBOTIDES_JAVA" --enable-native-access=ALL-UNNAMED -Xms32m -Xmx384m -jar "$game_jar" "$@"

@@ -7,6 +7,7 @@ import java.util.Properties
 
 class Records(private val directory: Path) {
     private val properties = Properties()
+    private val pendingBests = mutableMapOf<String, Float>()
     var error: String? = null
         private set
     init {
@@ -20,9 +21,13 @@ class Records(private val directory: Path) {
     fun setting(key: String, fallback: String): String = properties.getProperty(key, fallback)
     fun best(circuit: Circuit, difficulty: Difficulty): Float? = properties.getProperty("best.${circuit.name}.${difficulty.name}")
         ?.toFloatOrNull()?.takeIf { it.isFinite() && it > 0 }
+    fun pendingBest(circuit: Circuit, difficulty: Difficulty): Float? = pendingBests["best.${circuit.name}.${difficulty.name}"]
     fun finish(race: Race): Boolean {
         if (race.phase != Phase.FINISHED || race.elapsed >= (best(race.track.circuit, race.difficulty) ?: Float.MAX_VALUE)) return false
-        return save(mapOf("best.${race.track.circuit.name}.${race.difficulty.name}" to race.elapsed.toString()))
+        val key = "best.${race.track.circuit.name}.${race.difficulty.name}"
+        val fastest = minOf(race.elapsed, pendingBests[key] ?: Float.MAX_VALUE)
+        pendingBests[key] = fastest
+        return save(emptyMap()) && fastest == race.elapsed
     }
     fun save(values: Map<String, String>): Boolean {
         // Only publish a best/settings snapshot after the replacement succeeds.
@@ -30,6 +35,9 @@ class Records(private val directory: Path) {
         val updated = Properties().apply {
             putAll(properties)
             putAll(values)
+            // Keep earned records across failed writes and subsequent races.
+            // A later settings save must not erase the only pending best.
+            putAll(pendingBests.mapValues { it.value.toString() })
         }
         var temporary: Path? = null
         var stored = false
@@ -42,7 +50,8 @@ class Records(private val directory: Path) {
             } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
                 Files.move(temporary, directory.resolve("records.properties"), StandardCopyOption.REPLACE_EXISTING)
             }
-            properties.putAll(values)
+            properties.putAll(updated)
+            pendingBests.clear()
             error = null
             stored = true
         } catch (e: Exception) {

@@ -49,7 +49,9 @@ class PixelCanvas(val width: Int, val height: Int, background: Int) {
                     append(color(bottom, true))
                     bg = bottom
                 }
-                append('▀')
+                // A solid cell needs no Unicode glyph. This preserves both pixels
+                // and avoids tui4j's per-grapheme ICU work for most of the image.
+                append(if (top == bottom) ' ' else '▀')
             }
             append("\u001b[0m")
         }
@@ -93,7 +95,21 @@ class TerminalRenderer {
             when (race.phase) {
                 Phase.COUNTDOWN -> overlay(art, w, listOf("${ceil(race.countdown).toInt().coerceAtLeast(1)}", "W / Up to arm throttle · Get ready!"))
                 Phase.PAUSED -> overlay(art, w, listOf("Race paused", "Enter / Esc: resume   R: restart   G: garage", "Driving modes cleared. W / Up to accelerate."))
-                Phase.FINISHED -> overlay(art, w, listOf("Finished ${race.position}/6 · ${time(race.elapsed)}", if (game.newBest) "New personal best!" else "Every finish counts. Try another racing line.", "Best lap ${time(race.bestLap)} · Pads ${race.pads} · Drifts ${race.driftBonuses}", race.order.joinToString("  ") { it.name }, "Enter / R: retry   Esc / G: garage"))
+                Phase.FINISHED -> overlay(
+                    art,
+                    w,
+                    listOf(
+                        "Finished ${race.position}/6 · ${time(race.elapsed)}",
+                        when {
+                            game.newBest -> "New personal best!"
+                            game.records.pendingBest(game.circuit, game.difficulty) == race.elapsed -> "Personal best pending save; check the warning below."
+                            else -> "Every finish counts. Try another racing line."
+                        },
+                        "Best lap ${time(race.bestLap)} · Pads ${race.pads} · Drifts ${race.driftBonuses}",
+                        race.order.joinToString("  ") { it.name },
+                        "Enter / R: retry   Esc / G: garage",
+                    ),
+                )
                 else -> Unit
             }
         }

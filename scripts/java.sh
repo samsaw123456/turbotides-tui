@@ -27,6 +27,7 @@ java_is_25() {
 
 find_java_25() {
     java_kind=${1:-jre}
+    case ${XDG_DATA_HOME:-} in /*) java_data_dir=$XDG_DATA_HOME ;; *) java_data_dir=$HOME/.local/share ;; esac
     TURBOTIDES_JAVA=
     export TURBOTIDES_JAVA
     if [ -n "${TURBOTIDES_JAVA_HOME:-}" ]; then
@@ -39,6 +40,8 @@ find_java_25() {
     fi
     for java_candidate in "${app_dir:-/nonexistent}/runtime/bin/java" \
         "${app_dir:-/nonexistent}/runtime/Contents/Home/bin/java" \
+        "$java_data_dir/turbotides-tui/app/runtime/bin/java" \
+        "$java_data_dir/turbotides-tui/app/runtime/Contents/Home/bin/java" \
         "${JAVA_HOME:-/nonexistent}/bin/java" \
         "$(command -v java 2>/dev/null || true)" \
         /usr/lib/jvm/*25*/bin/java \

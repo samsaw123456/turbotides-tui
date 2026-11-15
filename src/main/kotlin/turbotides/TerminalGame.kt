@@ -33,6 +33,11 @@ class TerminalGame(val records: Records, private val telemetry: Path? = null) :
     private var lastDiagnostic = 0L
     private var saved = false
     private var previousMessage = ""
+    private var cachedView: String? = null
+    private var renderedPhase = Phase.GARAGE
+    private var renderedAudioStatus = ""
+    private var renderedRecordsError: String? = null
+    private var renderedDiagnosticError: String? = null
     val tooSmall get() = width < 64 || height < 24
 
     override fun init(): Command = tick()
@@ -40,6 +45,7 @@ class TerminalGame(val records: Records, private val telemetry: Path? = null) :
     override fun update(msg: Message): UpdateResult<TerminalGame> {
         val now = System.nanoTime()
         var command: Command? = null
+        if (msg !is FrameTick) cachedView = null
         when (msg) {
             is WindowSizeMessage -> {
                 width = msg.width()
@@ -61,7 +67,10 @@ class TerminalGame(val records: Records, private val telemetry: Path? = null) :
             is FrameTick -> {
                 val delta = ((now - lastFrame) / 1_000_000_000.0).toFloat().coerceIn(0f, 0.1f)
                 val before = race.phase
-                if (!help && focused && !tooSmall) race.advance(delta, input.controls(now))
+                if (!help && focused && !tooSmall) {
+                    if (race.phase == Phase.COUNTDOWN || race.phase == Phase.RACING) cachedView = null
+                    race.advance(delta, input.controls(now))
+                }
                 if (before != Phase.RACING && race.phase == Phase.RACING) audio.cue("go", muted)
                 if (race.phase == Phase.FINISHED && !saved) {
                     newBest = records.finish(race)
@@ -162,7 +171,11 @@ class TerminalGame(val records: Records, private val telemetry: Path? = null) :
         race = Race(Track(circuit), difficulty, paint)
         saveSettings()
     }
-    private fun saveSettings() = records.save(mapOf("circuit" to circuit.name, "paint" to paint.toString(), "difficulty" to difficulty.name, "muted" to muted.toString(), "reducedMotion" to reducedMotion.toString()))
+    private fun saveSettings() {
+        val pendingResult = race.phase == Phase.FINISHED && records.pendingBest(circuit, difficulty) == race.elapsed
+        val stored = records.save(mapOf("circuit" to circuit.name, "paint" to paint.toString(), "difficulty" to difficulty.name, "muted" to muted.toString(), "reducedMotion" to reducedMotion.toString()))
+        if (stored && pendingResult) newBest = true
+    }
     private fun start() {
         input.clear()
         race = Race(Track(circuit), difficulty, paint)
@@ -180,7 +193,19 @@ class TerminalGame(val records: Records, private val telemetry: Path? = null) :
         race.pause()
         input.clear()
     }
-    override fun view(): String = renderer.render(this)
+    override fun view(): String {
+        val status = audioStatus
+        if (cachedView == null || renderedPhase != race.phase || renderedAudioStatus != status || renderedRecordsError != records.error || renderedDiagnosticError != diagnosticError) {
+            // tui4j asks for a view on every tick even when its output is unchanged.
+            // Reuse static art while continuing input, audio and diagnostic updates.
+            cachedView = renderer.render(this)
+            renderedPhase = race.phase
+            renderedAudioStatus = status
+            renderedRecordsError = records.error
+            renderedDiagnosticError = diagnosticError
+        }
+        return cachedView!!
+    }
     override fun close() = audio.close()
 
     private fun diagnostic(now: Long) {
@@ -199,14 +224,23 @@ class TerminalGame(val records: Records, private val telemetry: Path? = null) :
             "best" to records.best(circuit, difficulty), "saveError" to (records.error != null),
         )
         val json = fields.entries.joinToString(",", "{", "}") { (k, v) -> "\"$k\":" + if (v is String) "\"$v\"" else v.toString() }
+        var temporary: Path? = null
         try {
             val target = telemetry!!.toAbsolutePath()
             Files.createDirectories(target.parent)
-            val temp = target.resolveSibling("${target.fileName}.tmp")
-            Files.writeString(temp, json)
-            Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING)
+            temporary = Files.createTempFile(target.parent, "turbotides-diagnostics-", ".tmp")
+            Files.writeString(temporary, json)
+            Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING)
+            diagnosticError = null
         } catch (e: Exception) {
             diagnosticError = "Diagnostics unavailable: ${e.message}"
+        } finally {
+            try {
+                temporary?.let { Files.deleteIfExists(it) }
+            } catch (e: Exception) {
+                val cleanup = "Cannot clean up temporary diagnostics: ${e.message}"
+                diagnosticError = diagnosticError?.let { "$it; $cleanup" } ?: cleanup
+            }
         }
     }
 }

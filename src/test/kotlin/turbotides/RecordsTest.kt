@@ -66,22 +66,7 @@ class RecordsTest {
         val dir = Files.createTempDirectory("tides-finish-save")
         try {
             val records = Records(dir)
-            val race = Race(Track(Circuit.SUNSET))
-            race.start()
-            // Complete via normal fixed-step simulation; only the filesystem fails.
-            repeat(120 * 100) {
-                if (race.phase != Phase.FINISHED) {
-                    race.advance(
-                        Race.STEP,
-                        Controls(
-                            throttle = true,
-                            steer = ((-race.player.lane * 3f - race.cornerForce()) / 11f).coerceIn(-1f, 1f),
-                            boost = true,
-                        ),
-                    )
-                }
-            }
-            assertEquals(Phase.FINISHED, race.phase)
+            val race = completedRace(boost = true)
             val destination = dir.resolve("records.properties")
             Files.createDirectory(destination)
             Files.writeString(destination.resolve("keep"), "unrelated file")
@@ -96,5 +81,49 @@ class RecordsTest {
         } finally {
             dir.toFile().deleteRecursively()
         }
+    }
+
+    @Test fun `a settings save recovers pending bests without replacing them with a slower finish`() {
+        val dir = Files.createTempDirectory("tides-pending-best")
+        try {
+            val records = Records(dir)
+            val fast = completedRace(boost = true)
+            val slow = completedRace(boost = false)
+            assertTrue(fast.elapsed < slow.elapsed)
+            val destination = dir.resolve("records.properties")
+            Files.createDirectory(destination)
+            Files.writeString(destination.resolve("keep"), "unrelated file")
+            assertFalse(records.finish(fast))
+            assertFalse(records.finish(slow))
+            assertNull(records.best(Circuit.SUNSET, Difficulty.CRUISE))
+            assertEquals(fast.elapsed, records.pendingBest(Circuit.SUNSET, Difficulty.CRUISE))
+            Files.delete(destination.resolve("keep"))
+            Files.delete(destination)
+            assertTrue(records.save(mapOf("muted" to "true")))
+            assertNull(records.error)
+            assertNull(records.pendingBest(Circuit.SUNSET, Difficulty.CRUISE))
+            val reloaded = Records(dir)
+            assertEquals(fast.elapsed, reloaded.best(Circuit.SUNSET, Difficulty.CRUISE))
+            assertEquals("true", reloaded.setting("muted", "false"))
+        } finally {
+            dir.toFile().deleteRecursively()
+        }
+    }
+
+    private fun completedRace(boost: Boolean): Race {
+        val race = Race(Track(Circuit.SUNSET))
+        race.start()
+        repeat(120 * 100) {
+            race.advance(
+                Race.STEP,
+                Controls(
+                    throttle = true,
+                    steer = ((-race.player.lane * 3f - race.cornerForce()) / 11f).coerceIn(-1f, 1f),
+                    boost = boost,
+                ),
+            )
+        }
+        assertEquals(Phase.FINISHED, race.phase)
+        return race
     }
 }

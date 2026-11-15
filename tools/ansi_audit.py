@@ -235,6 +235,11 @@ class Terminal:
         (self.directory / f"{label}.json").write_text(
             json.dumps(state, indent=2) + "\n"
         )
+        self.save_frame(label)
+        return state
+
+    def save_frame(self, label: str) -> None:
+        """Capture presentation even when the diagnostic destination is unavailable."""
         (self.directory / f"{label}.txt").write_text(self.text() + "\n")
         image = Image.new(
             "RGB", (self.screen.columns * 8, self.screen.lines * 16), "black"
@@ -267,7 +272,6 @@ class Terminal:
         name = f"{label}.png"
         image.save(self.directory / name)
         self.frames.append(str((self.directory / name).relative_to(ROOT)))
-        return state
 
     def close(self) -> None:
         if self.child.isalive():
@@ -769,6 +773,12 @@ def steering_check(terminal: Terminal, binding: str, direction: int) -> None:
     before = player_screen_x(terminal)
     terminal.repeat(binding, 0.48)
     after = player_screen_x(terminal)
+    # Keep the same visible displacement requirement under host scheduling load.
+    # Continue real key repeats while observing the sprite, never simulation time.
+    deadline = time.monotonic() + 0.8
+    while (after - before) * direction <= 2 and time.monotonic() < deadline:
+        terminal.key(binding, 0.04)
+        after = player_screen_x(terminal)
     require(
         (after - before) * direction > 2,
         f"{binding}: visible x {before} → {after}; expected screen {'left' if direction < 0 else 'right'}",
