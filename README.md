@@ -54,10 +54,15 @@ offline after installation. No accounts, ads, uploads, or game telemetry service
 | --- | --- |
 | Sunset Run | Palm trees, ocean bends, warm coastal light |
 | Cinder Ring | Red-rock climbs and tightening corners |
-| San Francisco — Golden Gate Run | Orange suspension bridge and city hills |
-| Silicon Valley — Campus Sprint | Solar roofs and sweeping campus bends |
-| New York City — Midtown Mile | Four blocks, park, and skyline |
-| Chicago — Lakeshore Loop | Lakefront and twin-antenna skyline |
+| San Francisco — Golden Gate Run | Foggy bay, orange suspension bridge, pastel bay-window houses and hillside skyline |
+| Silicon Valley — Campus Sprint | Solar roofs, glass campus buildings, trees and foothills |
+| New York City — Midtown Mile | Masonry street blocks, stepped towers, shopfronts and park |
+| Chicago — Lakeshore Loop | Lakefront, elevated rail, brick frontage and twin-antenna skyline |
+
+The city routes have perspective streetscapes adapted from the original game's
+architecture. [City environments and visual testing](docs/CITY_SCENERY.md).
+
+![San Francisco's bayfront and Victorian streets in the terminal](docs/screenshots/san-francisco.png)
 
 In the garage, use **Up/Down, W/S, Tab, or Shift+Tab** to select a row.
 **Left/Right or A/D** changes it. Enter activates it. With Start selected,
@@ -110,7 +115,9 @@ Resuming always clears driving modes; press W to accelerate again.
 The same distance-sampled tracks and fixed 120 Hz rules drive acceleration,
 braking, lateral inertia, corner forces, collision recovery, AI, nitro, drift
 banking, lap timing, and finish order. The terminal uses a colorful half-block
-perspective view, schematic skylines, and the actual track map. It does not
+perspective view, city streetscapes and landmarks, and the actual track map. City
+buildings pass beside the course; the grass recovery shoulder still follows the
+original off-road rules. The scenery is stylized rather than a street-map replica. It does not
 recreate libGDX's full 3D models, vertical camera, lighting, or font rendering.
 Your terminal chooses the font. Fullscreen belongs to your terminal; F11,
 standalone Shift, controllers, touch, and mouse menus are not game bindings.

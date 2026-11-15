@@ -1,5 +1,65 @@
 # Verification record
 
+## City environment update — v0.1.2
+
+Verified on Linux x86-64, November 15, 2026, with JDK 25.0.5+8.
+Executable SHA-256:
+`faa9fca463b683f26eaea496938ab0cfb4989ae1690e594e657c12d7e94df453`.
+
+- **43 regression tests passed**, with Kotlin lint/build and Python/ShellCheck
+  checks passing. Four new tests cover city/car/grass boundaries at three sizes,
+  both cameras and multiple course positions; deterministic rendering without
+  simulation mutation; and continuous skyline wrapping between laps.
+- **306 control coverage rows passed again on this executable**, including all
+  alternate bindings and relevant disabled states, focus/resize recovery,
+  contacts, saved settings and both earned-record write-error recovery paths.
+  The [binding/state table](CONTROLS.md) was regenerated only after verifying
+  every evidence image's executable hash and capture timestamp.
+- **12 complete three-lap races passed**, covering every circuit at both paces;
+  all finished first with seven to nine pads. [Current finish frames](screenshots/current-finishes.png).
+  A separate slower Sunset race finished fourth in 57.80 s, retained the 41.23 s
+  best and retried successfully. An exploratory no-nitro San Francisco run still
+  won in 50.93 s, so it was not counted as evidence of an unsuccessful placement.
+- All four city routes completed through actual ANSI input, capturing the
+  bayfront/neighborhood transitions, rear view, pause/resume, finish and retry.
+  San Francisco finished first in 46.65 s, Silicon Valley in 46.87 s, New York
+  in 47.27 s and Chicago in 47.50 s, with six to eight turbo pads per race.
+- Independent manual San Francisco play finished first in **54.04 s**, with
+  five pads, one banked drift and five bumps. The reviewer inspected visible
+  steering, grass/barrier slowdown and recovery, braking to zero, mirrored rear
+  view at the same distance, minimum-size play, finish, retry, saved best and
+  clean exit. The exact input log and 24 inspected-frame inventory are retained
+  in `build/city-review/report.json` and its session directories.
+- All four city previews were visually inspected at **64×24, 100×34 and
+  180×65**, plus 100×34 indexed color. A separate actual 80×28 indexed-color
+  driving/pause session also passed. Facades, sidewalks, train structures and
+  waterfront stay behind the racing corridor and cars. [City images and reproduction](CITY_SCENERY.md).
+- One initial Chicago audit checked the pause label before the asynchronous
+  frame arrived. The retained ANSI contained the correct pause screen and the
+  race was paused. The audit now waits for the visible text as well as state;
+  the complete Chicago run passed unchanged game code. First-attempt evidence
+  remains in `build/city-late-pause-frame/`.
+- Two focused installer checks passed on this executable: install/launch/repair/
+  removal and an actual Linux desktop-entry launch through GIO. Both used isolated
+  prefixes. The installer and icon themselves are unchanged.
+- Eight-second San Francisco samples measured **38.09 complete ANSI redraws/s at
+  100×34** and **35.96 at 180×65**. Resume produced visible decoded output in
+  33.62 ms and 20.17 ms respectively. Java used 57.58% and 95.43% of one CPU core;
+  peak sample RSS was 392.54 MiB and 587.66 MiB. Other audits ran on the same
+  eight-core host, with load averages roughly 3.8–7.9. These are bounded local
+  measurements, not guaranteed frame rates or a controlled before/after comparison.
+  Raw frames and measurements are in `build/city-performance/`.
+
+`Race.kt`, `Track.kt`, input, audio and persistence code are unchanged from
+v0.1.1. This update changes scenery and its rendering layers. Platform/device
+limits below still apply; it adds no claim of native macOS GUI or speaker testing.
+
+## Retained v0.1.1 release evidence
+
+The following results describe the previous release's broader installation,
+audio and performance review. They are retained with their original executable
+identity; they are not presented as new v0.1.2 device tests.
+
 Verified on Linux x86-64, November 15, 2026. The final executable is identified
 by SHA-256 `fc5734af39bcc17ac9c91758a7518b612168860558dbce09546b0c112627a490`.
 The build and final control/audio runs used Temurin 25.0.5+8; the v0.1.0 campaign

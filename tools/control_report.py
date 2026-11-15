@@ -2,11 +2,13 @@
 
 import hashlib
 import json
+from datetime import date
 from pathlib import Path
 
 from PIL import Image, ImageChops
 
 root = Path(__file__).resolve().parents[1]
+version = (root / "VERSION").read_text().strip()
 out = root / "build/ansi-audit"
 jar_hash = hashlib.sha256(
     (root / "build/libs/turbotides-tui.jar").read_bytes()
@@ -46,7 +48,7 @@ old = (root / "docs/CONTROLS.md").read_text()
 protocol = old.split("## Escape protocol finding", 1)[1].split("## Evidence", 1)[0]
 header = f"""# Complete control audit
 
-Frozen v0.1.1 executable SHA-256: `{jar_hash}`. Audit date: 2026-11-15.
+Frozen v{version} executable SHA-256: `{jar_hash}`. Audit date: {date.today()}.
 
 **{len(rows)} passed rows** cover every advertised physical binding in each relevant state, repeated input, disabled commands, recovery, records and contacts. Both six-circuit race/pace campaigns are included. Alternate keys are exercised separately through the actual PTY.
 
@@ -56,9 +58,9 @@ Ordinary ANSI has no key-up identity. Throttle/brake are modes, steering expires
 
 ## Escape protocol finding{protocol}## Evidence
 
-Every inventory row below was rechecked on the frozen v0.1.1 executable. The main inventory ran continuously; the interrupted earlier candidate run is not used as final proof. Results come from actual terminal output, not a duplicate renderer. Steering assertions locate painted player pixels independently of lane signs; speed checks read the visible speedometer; disabled-input checks compare rendered cells. Audio effects are separately captured from the game's real playback stream in [AUDIO.md](AUDIO.md).
+Every inventory row below was rechecked on the frozen v{version} executable. Results come from actual terminal output, not a duplicate renderer. Steering assertions locate painted player pixels independently of lane signs; speed checks read the visible speedometer; disabled-input checks compare rendered cells. Audio effects were separately captured from the v0.1.1 playback stream in [AUDIO.md](AUDIO.md); the scenery update does not change audio.
 
-Paths below are relative to `build/ansi-audit/`. The retained tools recreate raw ANSI, decoded text, PNGs, diagnostics, and JSON reports locally. Generated evidence is excluded from git; curated [steering](screenshots/steering-audit.png), [mechanics](screenshots/mechanics.png), and [finish](screenshots/six-finishes.png) images illustrate the presentation. Each session's `build.json` identifies its executable. Table generation rejects evidence from a different artifact.
+Paths below are relative to `build/ansi-audit/`. The retained tools recreate raw ANSI, decoded text, PNGs, diagnostics, and JSON reports locally. Generated evidence is excluded from git; curated [steering](screenshots/steering-audit.png), [city streets](screenshots/city-streets.png), and [finish](screenshots/current-finishes.png) images show this build. Each session's `build.json` identifies its executable. Table generation rejects evidence from a different artifact.
 
 The Actual result column compares captured images and reports selected state changes as supplementary evidence. The expected outcome is independently asserted by the corresponding live-interface test; a telemetry sign or successful automated win alone is not accepted as proof.
 

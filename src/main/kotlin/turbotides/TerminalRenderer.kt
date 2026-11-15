@@ -185,15 +185,24 @@ class TerminalRenderer {
         val playerY = c.height - 5
         val sky = when (game.circuit) {
             Circuit.CINDER -> 0xecaa78
+            Circuit.SAN_FRANCISCO -> 0xc8d6cf
+            Circuit.SILICON_VALLEY -> 0xbdd8d4
             Circuit.NEW_YORK, Circuit.CHICAGO -> 0x8fbac6
             else -> 0xf7c594
         }
         c.rect(0, 0, c.width, horizon, sky)
         c.rect(c.width * 3 / 4, 2, 5, 5, 0xffedce)
-        scenery(c, game.circuit, horizon)
+        val city = game.circuit !in listOf(Circuit.SUNSET, Circuit.CINDER)
+        if (city) {
+            CityScenery.skyline(c, game.circuit, horizon, track.wrap(race.player.distance) / track.length, rear)
+        } else {
+            scenery(c, game.circuit, horizon)
+        }
         val centers = FloatArray(c.height)
         val scales = FloatArray(c.height)
         val distances = FloatArray(c.height)
+        val stripes = BooleanArray(c.height)
+        val grounds = IntArray(c.height)
         for (y in horizon until c.height) {
             val t = (y - horizon + 1f) / (c.height - horizon)
             val depth = (y - horizon).toFloat() / (playerY - horizon)
@@ -211,7 +220,22 @@ class TerminalRenderer {
                 Circuit.SUNSET -> if (stripe) 0x279b91 else 0x268d85
                 else -> if (stripe) 0x3a7162 else 0x3e7969
             }
+            stripes[y] = stripe
+            grounds[y] = ground
             c.rect(0, y, c.width, 1, ground)
+        }
+        if (city) CityScenery.roadside(c, game.circuit, track, race.player.distance, rear, horizon, centers, scales, distances)
+        for (y in horizon until c.height) {
+            val center = centers[y]
+            val scale = scales[y]
+            val ahead = distances[y]
+            val stripe = stripes[y]
+            // Scenery is behind the racing corridor. Preserve the original grass
+            // recovery strip out to the physical barrier, even on city streets.
+            if (city) {
+                val shoulder = track.barrier * scale
+                c.rect(floor(center - shoulder).toInt(), y, ceil(shoulder * 2).toInt() + 1, 1, grounds[y])
+            }
             val half = track.roadHalfWidth * scale
             c.rect((center - half - scale * 1.5f).toInt(), y, (half * 2 + scale * 3).toInt().coerceAtLeast(1), 1, if (stripe) CREAM else ORANGE)
             c.rect((center - half).toInt(), y, (half * 2).toInt().coerceAtLeast(1), 1, if (stripe) 0x374851 else 0x3b4d57)
@@ -266,30 +290,7 @@ class TerminalRenderer {
             Circuit.CINDER -> for (x in 0 until c.width step 17) {
                 for (dy in 0..8) c.rect(x - dy, horizon - 8 + dy, dy * 2 + 6, 1, 0xa35f43)
             }
-            Circuit.SAN_FRANCISCO -> {
-                for (x in listOf(c.width / 5, c.width * 4 / 5)) {
-                    c.rect(x, 1, 2, horizon, 0xb94432)
-                    c.rect(x - 2, 3, 6, 1, ORANGE)
-                }
-                c.line(c.width / 5, 2, c.width / 2, horizon - 2, ORANGE)
-                c.line(c.width / 2, horizon - 2, c.width * 4 / 5, 2, ORANGE)
-            }
-            Circuit.SILICON_VALLEY -> {
-                c.rect(c.width / 10, horizon - 4, c.width / 3, 4, 0xddd3b0)
-                c.rect(c.width / 10 + 2, horizon - 5, c.width / 3 - 4, 2, 0x426c7c)
-            }
-            else -> for (x in 0 until c.width step 7) {
-                val tall = 3 + (x * 17 % max(4, horizon - 2))
-                c.rect(x, horizon - tall, 5, tall, 0x3d6273)
-                for (y in horizon - tall + 1 until horizon step 3) {
-                    c.pixel(x + 1, y, CREAM)
-                    c.pixel(x + 3, y, CREAM)
-                }
-                if (circuit == Circuit.CHICAGO && x == 14) {
-                    c.line(x, 0, x, horizon, INK)
-                    c.line(x + 3, 0, x + 3, horizon, INK)
-                }
-            }
+            else -> Unit
         }
     }
     companion object {

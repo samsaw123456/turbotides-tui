@@ -13,8 +13,19 @@ selects either palette. Quantization is cached and never changes geometry.
 Draw the road from the authoritative track's lateral geometry, with a fixed
 road-centered forward camera. A positive lane must visibly move the car right.
 The labelled rear camera mirrors the view while preserving driver-relative
-steering. Scenery is schematic and track-specific. Do not imply that the
-terminal projection reproduces the original 3D camera or elevation rendering.
+steering. City environments use the original procedural architecture's palette:
+San Francisco's foggy bay, orange suspension bridge and pastel bay-window houses;
+New York's stepped towers and masonry blocks; Chicago's lake, elevated rail and
+banded towers; Silicon Valley's solar roofs and low campus buildings. Foreground
+architecture is anchored to course distance and grows with perspective, giving
+the streets a sense of scale. Sidewalks and facades sit beyond the physical
+barrier. The visible grass recovery strip remains beside the asphalt because
+the original simulation slows cars there. Paint the racing corridor after
+scenery and the cars last, keeping pads, opponents and steering legible.
+
+Landmarks are stylized terminal scenery, not a geographically exact street map.
+The hill silhouettes do not change the road projection or original elevation
+physics. Do not imply that this projection reproduces the original 3D camera.
 
 Maintain the original 120 Hz physics and cap long-frame catch-up at 100 ms.
 Presentation requests updates at 40 Hz; actual throughput depends on the terminal
