@@ -565,6 +565,23 @@ class InstallerTest(unittest.TestCase):
         )
 
     @unittest.skipUnless(
+        os.uname().sysname == "Linux"
+        and importlib.util.find_spec("pexpect")
+        and importlib.util.find_spec("pyte"),
+        "Linux ALSA configuration and audit dependencies",
+    )
+    def test_unavailable_audio_still_allows_play_and_clean_exit(self):
+        self.env["ALSA_CONFIG_PATH"] = "/dev/null"
+        self.install("--no-desktop")
+        self.exercise_live_replacement(
+            self.bin / "turbotides-tui", lambda: None, "unavailable-audio"
+        )
+        output = (
+            ROOT / "build/installer-audit/unavailable-audio/exit.ansi"
+        ).read_text()
+        self.assertIn("Sound unavailable:", output)
+
+    @unittest.skipUnless(
         importlib.util.find_spec("pexpect") and importlib.util.find_spec("pyte"),
         "Install tools/audit-requirements.txt for the live source rebuild check",
     )
@@ -747,7 +764,10 @@ class InstallerTest(unittest.TestCase):
         self.assertIn("\x1b[?1049l", "".join(raw), "Alternate screen was not restored")
         child.close()
         self.assertEqual(child.exitstatus, expected_exit, "".join(raw)[-3000:])
-        self.assertNotIn("Exception", "".join(raw))
+        # An unavailable audio device is a supported, visible status containing
+        # an exception class name. Reject unhandled JVM traces, not that status.
+        self.assertNotIn("Exception in thread ", "".join(raw))
+        self.assertNotIn("\tat ", "".join(raw))
         self.assertEqual(list(temporary.iterdir()), [])
 
     def test_install_launch_repair_and_uninstall(self):

@@ -20,7 +20,7 @@ also exercised Ubuntu OpenJDK 25.0.4.1. The original Turbo Tides workspace was n
 - **15 actual audio-stream captures passed**: seven muted/paused cases were
   exactly silent and eight enabled/restored cases produced PCM. See [audio
   evidence and hardware limits](AUDIO.md).
-- **46 installer test methods exercised successfully**, including real runtime download,
+- **47 installer test methods exercised successfully**, including real runtime download,
   repair, preserved records, rollback, unusual path characters and launching the
   actual game through the generated Linux desktop entry. See [installation
   verification](INSTALLATION.md). Package-manager fixtures cannot change host packages;

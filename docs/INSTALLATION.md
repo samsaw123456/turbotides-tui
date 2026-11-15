@@ -153,7 +153,7 @@ runtime download, graphical desktop, and two no-Java first-use checks. The
 first-use checks use Linux mount namespaces to hide the host's Java without
 changing it, and verify that second launches reuse the private runtime.
 
-On November 15, 2026, all 46 installer test methods passed across the suite and
+On November 15, 2026, all 47 installer test methods passed across the suite and
 focused integration runs. The final JAR
 `fc5734af39bcc17ac9c91758a7518b612168860558dbce09546b0c112627a490`
 passed installed repair while running, source-JAR rewrite while running, and
@@ -177,3 +177,10 @@ with certificate error 77, the installer requested only `ca-certificates`, and
 HTTPS succeeded after a recording package-manager fixture restored the real
 distro bundle inside the namespace. Host certificates and packages were
 unchanged; the result is retained in `build/installer-audit/certificates.json`.
+
+A headless CI runner exposed an overly broad test assertion: the supported
+`Sound unavailable: IllegalArgumentException` footer was mistaken for an
+unhandled crash. The assertion now rejects actual JVM stack traces, and a new
+Linux case deliberately disables ALSA configuration. Installed play, live
+repair/rebuild, Ctrl+C/SIGTERM, and terminal cleanup all passed without an audio
+device. This is a test correction; the game already handled the missing device.
