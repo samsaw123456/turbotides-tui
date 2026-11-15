@@ -1,6 +1,69 @@
 # Verification record
 
-## City environment update — v0.1.2
+## Four rival difficulties — v0.1.3
+
+Verified on Linux x86-64, November 15, 2026, with JDK 25.0.5+8.
+Executable SHA-256:
+`2fe59158470d3d77e089e98c48e251e98708ae696219cf2fffbe17261c6e247a`.
+
+- **52 regression tests passed**, with `./gradlew ktlintFormat check fatJar`.
+  New checks cover all four rival profiles on all six courses, acceleration and
+  speed bounds, no player-gap rubber banding, unchanged player physics, fixed-step
+  timing, pause/reset, menu cycling, persistence and legacy record migration.
+- **376 control coverage rows passed on this executable**: 235 main cases,
+  24 difficulty cases, 92 results-screen cases across four campaigns, 14 quit
+  cases, two records cases, two save-error cases, one contact scenario and six
+  earned-record recovery cases. The [binding/state table](CONTROLS.md) checks
+  every evidence frame's executable hash and capture timestamp before generation.
+  All five difficulty-selection bindings were exercised separately through every
+  level; each level was started and paused at 64×24. The Super Hard header remains
+  visible in the [minimum-size selector](screenshots/difficulty-selector.png).
+- **24 complete three-lap campaign races passed**, one per circuit and level.
+  The pad/nitro driver won all six on Easy and Medium. Hard placements were
+  1st, 2nd, 1st, 4th, 5th and 3rd in circuit order. Super Hard finished sixth
+  on every circuit. [Super Hard standard-driver finishes](screenshots/current-finishes.png).
+  A passed campaign means its three laps, displayed result, record and recovery
+  assertions passed; it does not require a win.
+- **Six expert Super Hard wins** demonstrated that every course remains
+  beatable with ordinary ANSI input at normal simulation speed. The expert driver
+  combines pads, boost and banked drifts. These are automated, read-only-diagnostics
+  guided playtests. [Times, input recovery and reproduction](DIFFICULTY.md).
+- **Independent manual Sunset play** won Easy in 47.87 s with four pads and no
+  manual nitro/drift, then lost Super Hard in 44.06 s with six pads, five banked
+  drifts and nitro use. Both runs exercised finish, retry, pause, garage, saved
+  best and clean exit. Twenty frames were directly inspected. The reviewer also
+  inspected Super Hard at 64×24. [Visible comparison](screenshots/difficulty-comparison.png).
+- Four parked San Francisco races observed every rival finishing in normal wall
+  time. The fastest rival improved from 67.40 s to 54.05 s to 44.96 s to 39.60 s.
+  Separately inspected early-race frames showed the stronger field pulling away.
+- Four actual PTY migration sessions checked Cruise→Easy and Race→Medium,
+  unchanged file bytes on startup, visible bests for all four levels, preserved
+  legacy keys after saves and correct settings/records after reopening.
+- The final build was visually inspected at 64×24, 100×34 and 180×65, including
+  all eight forward/rear steering pairs. An actual 80×28 indexed-color session
+  showed Super Hard in the garage, race and pause screen and exited cleanly.
+- Two installer checks passed with isolated prefixes: install, launch, repair
+  and removal; and launching the actual game through its Linux desktop entry
+  using GIO. The dependency installer and original launcher icon are unchanged.
+- **15 actual playback-stream captures passed**: seven muted/paused cases were
+  exactly silent and eight enabled/restored cases produced PCM. A first attempt
+  passed the PCM checks but detected a system-volume change; the repeat retained
+  before/after values and passed that guard too. [Capture details and device limits](AUDIO.md).
+
+One contact audit initially saw a stale diagnostic counter immediately after
+the actual rendered “Turbo pad!” message. Its retained frame showed the pickup.
+The observer now waits for the 10 Hz diagnostic snapshot before checking the
+same collision/pad assertions; the rerun passed unchanged game code. The first
+attempt remains in `build/difficulty-contact-first-attempt/`.
+
+Raw evidence is in `build/ansi-audit/`, `build/difficulty-engine-play/`,
+`build/difficulty-engine-retained/`, `build/difficulty-review/` and
+`build/difficulty-migration/`. Curated images and the complete control table are
+tracked. Original player physics and track geometry remain unchanged; only rival
+profiles, difficulty selection/labels, compatibility reads and local diagnostic
+fields changed. Audio-device and platform limits below still apply.
+
+## Retained city environment update — v0.1.2
 
 Verified on Linux x86-64, November 15, 2026, with JDK 25.0.5+8.
 Executable SHA-256:
@@ -16,7 +79,7 @@ Executable SHA-256:
   The [binding/state table](CONTROLS.md) was regenerated only after verifying
   every evidence image's executable hash and capture timestamp.
 - **12 complete three-lap races passed**, covering every circuit at both paces;
-  all finished first with seven to nine pads. [Current finish frames](screenshots/current-finishes.png).
+  all finished first with seven to nine pads. [v0.1.2 finish frames](https://github.com/samsaw123456/turbotides-tui/blob/v0.1.2/docs/screenshots/current-finishes.png).
   A separate slower Sunset race finished fourth in 57.80 s, retained the 41.23 s
   best and retried successfully. An exploratory no-nitro San Francisco run still
   won in 50.93 s, so it was not counted as evidence of an unsuccessful placement.
@@ -173,8 +236,11 @@ python3 -m venv .venv
 python3 -m py_compile tools/*.py
 .venv/bin/python tools/ansi_audit.py --help
 .venv/bin/python tools/ansi_audit.py --group all
-.venv/bin/python tools/ansi_audit.py --group races
-.venv/bin/python tools/ansi_audit.py --group races --opposite-pace
+.venv/bin/python tools/difficulty_audit.py
+for level in EASY MEDIUM HARD SUPER_HARD; do
+  .venv/bin/python tools/ansi_audit.py --group races --difficulty "$level"
+done
+.venv/bin/python tools/expert_audit.py
 .venv/bin/python tools/key_protocol_probe.py
 .venv/bin/python tools/audio_audit.py
 .venv/bin/python tools/record_recovery_audit.py
@@ -198,8 +264,8 @@ speaker settings are modified.
 
 | Area | Assessment |
 | --- | --- |
-| Core loop | Passed: garage, countdown, 12 race/pace combinations, finish, retry, records |
-| Physics | Passed: original fixed 120 Hz rules; braking, boost, drift, pads, grass, barriers, rival contacts; matching rendered boundaries |
+| Core loop | Passed: garage, countdown, 24 circuit/difficulty combinations, finish, retry, records |
+| Physics | Passed: original fixed 120 Hz player rules; four bounded rival profiles; braking, boost, drift, pads, grass, barriers, rival contacts; matching rendered boundaries |
 | Interaction | Passed within documented ANSI semantics: every binding/state, repeats, opposing steering, disabled input and recovery |
 | Navigation/camera | Passed: six reachable circuits, real maps, visible forward/rear steering; simplified terminal projection |
 | State | Passed: countdown/race pause, reset, finish, blur, resize and resumed input clearing |
@@ -237,4 +303,5 @@ Ctrl+Z/terminal restoration, and actual installed operation with network calls
 denied. A final 100×34 sample measured 32.21 complete ANSI redraws/s on a busy
 shared host. Large-window and before/after measurements are explicitly labelled
 with their candidate artifact and host-load limitations, rather than presented
-as guaranteed frame rates. The original Race.kt and Track.kt remain unchanged.
+as guaranteed frame rates. That review preceded the four rival profiles added
+in v0.1.3; original player physics and Track.kt remain unchanged.

@@ -19,8 +19,18 @@ class Records(private val directory: Path) {
         }
     }
     fun setting(key: String, fallback: String): String = properties.getProperty(key, fallback)
-    fun best(circuit: Circuit, difficulty: Difficulty): Float? = properties.getProperty("best.${circuit.name}.${difficulty.name}")
-        ?.toFloatOrNull()?.takeIf { it.isFinite() && it > 0 }
+    fun best(circuit: Circuit, difficulty: Difficulty): Float? {
+        // Read old pace records without rewriting the user's file on startup.
+        // Keeping both keys also preserves records if an older version is used.
+        val legacy = when (difficulty) {
+            Difficulty.EASY -> "CRUISE"
+            Difficulty.MEDIUM -> "RACE"
+            else -> null
+        }
+        val prefix = "best.${circuit.name}."
+        return listOfNotNull(recordedTime(prefix + difficulty.name), legacy?.let { recordedTime(prefix + it) }).minOrNull()
+    }
+    private fun recordedTime(key: String): Float? = properties.getProperty(key)?.toFloatOrNull()?.takeIf { it.isFinite() && it > 0 }
     fun pendingBest(circuit: Circuit, difficulty: Difficulty): Float? = pendingBests["best.${circuit.name}.${difficulty.name}"]
     fun finish(race: Race): Boolean {
         if (race.phase != Phase.FINISHED || race.elapsed >= (best(race.track.circuit, race.difficulty) ?: Float.MAX_VALUE)) return false

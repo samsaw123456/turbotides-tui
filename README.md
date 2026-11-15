@@ -67,9 +67,31 @@ architecture. [City environments and visual testing](docs/CITY_SCENERY.md).
 In the garage, use **Up/Down, W/S, Tab, or Shift+Tab** to select a row.
 **Left/Right or A/D** changes it. Enter activates it. With Start selected,
 Left/Right still browses circuits and **Enter races**. P switches between the
-actual circuit map and the starting grid. Five paint colors and two rival paces
-(Cruise and Race) are available. Personal bests are separate for each circuit
-and pace.
+actual circuit map and the starting grid. Five paint colors and four difficulty
+levels are available. Personal bests are separate for each circuit and level.
+
+## Choose your difficulty
+
+Select **Difficulty** in the garage, then use **Left/Right or A/D** to choose:
+
+| Level | What to expect |
+| --- | --- |
+| Easy | Slower starts and cautious cornering; room to learn and recover |
+| Medium | Quicker rivals that reward clean driving |
+| Hard | Fast starts, stronger corner exits and frequent speed bursts |
+| Super Hard | Sustained pressure near boost speed; demands strong lines, pads and drift banking |
+
+The selected level stays visible during racing and on the results screen.
+Difficulty changes the rivals' pace; your car keeps the same handling. Rivals
+do not teleport or change speed to compensate for your position.
+
+For Super Hard, combine **B** with **Space** to boost while drifting. Keep steering
+long enough to earn a drift, then end it to bank nitro; use the mint strips and
+stay clear of grass and contacts. There is enough speed to win, but mistakes cost
+positions quickly. Old **Cruise** settings and records carry over to **Easy**;
+old **Race** settings and records carry over to **Medium**.
+
+[Difficulty balance and verification](docs/DIFFICULTY.md).
 
 ## Drive
 
@@ -112,9 +134,10 @@ Resuming always clears driving modes; press W to accelerate again.
 
 ## What carries over
 
-The same distance-sampled tracks and fixed 120 Hz rules drive acceleration,
-braking, lateral inertia, corner forces, collision recovery, AI, nitro, drift
-banking, lap timing, and finish order. The terminal uses a colorful half-block
+The original distance-sampled tracks and fixed 120 Hz player rules drive acceleration,
+braking, lateral inertia, corner forces, collision recovery, nitro, drift
+banking, lap timing, and finish order. The four rival difficulty profiles extend
+the original AI. The terminal uses a colorful half-block
 perspective view, city streetscapes and landmarks, and the actual track map. City
 buildings pass beside the course; the grass recovery shoulder still follows the
 original off-road rules. The scenery is stylized rather than a street-map replica. It does not

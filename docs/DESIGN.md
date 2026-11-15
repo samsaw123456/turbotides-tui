@@ -35,9 +35,19 @@ Small windows pause the simulation. Keyboard modes replace unobservable ANSI
 key releases; visible mode indicators are essential. No invisible auto-drive,
 physics cheats, telemetry-driven input inside the game, or automated wins.
 
+Four rival difficulties form a deliberate extension of the original two paces.
+Easy, Medium, Hard and Super Hard increase acceleration, corner pace and burst
+frequency. Rivals stay at or below the player's 87 m/s boosted speed and 40 m/s²
+maximum acceleration, with no player-gap rubber banding. Player physics stays
+identical across levels. Verify meaningful opponent-time separation on every
+route and genuine Super Hard wins through normal terminal input. The minimum
+64-column header must retain the chosen difficulty in every game state.
+Legacy Cruise/Race settings and bests map to Easy/Medium without startup writes;
+keep old keys, choose the fastest valid old/new best, and isolate all four slots.
+
 Testable invariants: three laps, five rivals, six routes; no reverse; grass
 slows; barriers remain recoverable; brake wins over boost; drift banks only
 with earned charge; turbo pads work once per lap; paused/countdown/finished
 state transitions preserve intended timing; restarting clears driving modes;
-per-circuit/per-pace records survive restarts and install updates. Verify every
+per-circuit/per-difficulty records survive restarts and install updates. Verify every
 binding against actual output, then inspect captured frames. See VERIFICATION.md.

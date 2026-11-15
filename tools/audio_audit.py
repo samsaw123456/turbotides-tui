@@ -160,6 +160,7 @@ def main() -> None:
             (ROOT / "build/libs/turbotides-tui.jar").read_bytes()
         ).hexdigest(),
         "java_version": command(terminal.child.command, "--version").splitlines()[0],
+        "speaker_state_before": speaker_before.strip(),
     }
     try:
         terminal.pump(0.5)
@@ -247,6 +248,7 @@ def main() -> None:
                 f"{label} did not emit expected audio: {result[label]}",
             )
         speaker_after = command("wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@")
+        result["speaker_state_after"] = speaker_after.strip()
         require(
             speaker_before == speaker_after, "Speaker state changed during capture."
         )

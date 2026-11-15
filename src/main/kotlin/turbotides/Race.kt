@@ -3,7 +3,19 @@ package turbotides
 import kotlin.math.*
 
 enum class Phase { GARAGE, COUNTDOWN, RACING, PAUSED, FINISHED }
-enum class Difficulty(val title: String, val pace: Float) { CRUISE("Cruise", 0.91f), RACE("Race", 1f) }
+enum class Difficulty(
+    val title: String,
+    val baseSpeed: Float,
+    val acceleration: Float,
+    val cornerPenalty: Float,
+    val burstBonus: Float,
+    val burstThreshold: Float,
+) {
+    EASY("Easy", 43f, 16f, 220f, 3f, .95f),
+    MEDIUM("Medium", 54f, 23f, 190f, 6f, .85f),
+    HARD("Hard", 64f, 31f, 120f, 9f, .5f),
+    SUPER_HARD("Super Hard", 72.5f, 40f, 80f, 12f, .3f),
+}
 
 data class Controls(
     val throttle: Boolean = false,
@@ -19,7 +31,7 @@ class Racer(val name: String, val paint: Int, var distance: Float, var lane: Flo
     var finishTime: Float? = null
 }
 
-class Race(val track: Track, val difficulty: Difficulty = Difficulty.CRUISE, paint: Int = 0) {
+class Race(val track: Track, val difficulty: Difficulty = Difficulty.EASY, paint: Int = 0) {
     companion object {
         const val STEP = 1f / 120f
         const val LAPS = 3
@@ -197,9 +209,12 @@ class Race(val track: Track, val difficulty: Difficulty = Difficulty.CRUISE, pai
     private fun updateRival(rival: Racer, index: Int) {
         if (rival.finishTime != null) return
         val bend = abs(track.curvature(rival.distance))
-        val pace = (54.5f + index * 1.4f) * difficulty.pace
-        val target = (pace - bend * 190f).coerceAtLeast(34f) + if (sin(elapsed * 0.65f + index * 2f) > 0.85f) 11f else 0f
-        rival.speed += (target - rival.speed) * STEP * 0.8f
+        val pace = difficulty.baseSpeed + index * 1.4f
+        val burst = if (sin(elapsed * 0.65f + index * 2f) > difficulty.burstThreshold) difficulty.burstBonus else 0f
+        val target = (pace - bend * difficulty.cornerPenalty + burst).coerceIn(0f, 87f)
+        // Difficulty changes the rival's driving, never its distance to the player.
+        // Even Super Hard stays within the player's boost/braking limits.
+        rival.speed += (target - rival.speed).coerceIn(-46f * STEP, difficulty.acceleration * STEP)
         val preferredLane = (if (index % 2 == 0) 3.8f else -3.8f) + sin(elapsed * 0.4f + index) * 1.1f
         rival.lane += (preferredLane - rival.lane) * STEP
         rival.distance += rival.speed * STEP

@@ -15,8 +15,11 @@ jar_hash = hashlib.sha256(
 ).hexdigest()
 groups = [
     "all",
-    "finish",
-    "finish-results-opposite",
+    "difficulty",
+    "finish-easy",
+    "finish-medium",
+    "finish-hard",
+    "finish-super_hard",
     "quit",
     "records",
     "errors",
@@ -26,11 +29,7 @@ groups = [
 ]
 rows = []
 for group in groups:
-    filename = (
-        "finish-results-opposite.json"
-        if group == "finish-results-opposite"
-        else group + "-results.json"
-    )
+    filename = group + "-results.json"
     records = json.loads((out / filename).read_text())
     for record in records:
         assert record["status"] == "PASSED", (group, record)
@@ -50,7 +49,7 @@ header = f"""# Complete control audit
 
 Frozen v{version} executable SHA-256: `{jar_hash}`. Audit date: {date.today()}.
 
-**{len(rows)} passed rows** cover every advertised physical binding in each relevant state, repeated input, disabled commands, recovery, records and contacts. Both six-circuit race/pace campaigns are included. Alternate keys are exercised separately through the actual PTY.
+**{len(rows)} passed rows** cover every advertised physical binding in each relevant state, repeated input, disabled commands, recovery, records and contacts. All four six-circuit difficulty campaigns are included. Alternate keys are exercised separately through the actual PTY.
 
 Letters mean unshifted keys. Arrows, Tab, Shift+Tab, Enter, Escape, Space, `?`, and Ctrl+C were sent separately. Focus-out/in messages and window-size changes were exercised.
 
@@ -58,7 +57,7 @@ Ordinary ANSI has no key-up identity. Throttle/brake are modes, steering expires
 
 ## Escape protocol finding{protocol}## Evidence
 
-Every inventory row below was rechecked on the frozen v{version} executable. Results come from actual terminal output, not a duplicate renderer. Steering assertions locate painted player pixels independently of lane signs; speed checks read the visible speedometer; disabled-input checks compare rendered cells. Audio effects were separately captured from the v0.1.1 playback stream in [AUDIO.md](AUDIO.md); the scenery update does not change audio.
+Every inventory row below was rechecked on the frozen v{version} executable. Results come from actual terminal output, not a duplicate renderer. Steering assertions locate painted player pixels independently of lane signs; speed checks read the visible speedometer; disabled-input checks compare rendered cells. See [AUDIO.md](AUDIO.md) for actual playback-stream captures and device limits.
 
 Paths below are relative to `build/ansi-audit/`. The retained tools recreate raw ANSI, decoded text, PNGs, diagnostics, and JSON reports locally. Generated evidence is excluded from git; curated [steering](screenshots/steering-audit.png), [city streets](screenshots/city-streets.png), and [finish](screenshots/current-finishes.png) images show this build. Each session's `build.json` identifies its executable. Table generation rejects evidence from a different artifact.
 

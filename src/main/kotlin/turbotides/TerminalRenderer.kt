@@ -83,8 +83,8 @@ class TerminalRenderer {
         if (game.tooSmall) return listOf("Turbo Tides TUI", "Resize to at least 64 x 24.", "Race paused. Q quits.").take(h).joinToString("\n") { it.take(w) }
         val race = game.race
         val lines = mutableListOf<String>()
-        lines += text("  TURBO TIDES   ${game.circuit.title}  ·  ${game.circuit.route}", w, CREAM, INK)
-        lines += text(if (race.phase == Phase.GARAGE) "  Three laps · six racers · ${game.difficulty.title} pace     Best ${time(game.records.best(game.circuit, game.difficulty))}" else "  ${race.position}/6   Lap ${race.lap}/3   ${time(race.elapsed)}   ${(race.player.speed * 3.6f).roundToInt()} km/h   Nitro ${race.nitro.toInt()}%", w, CREAM, INK)
+        lines += text("  TURBO TIDES   ${game.circuit.title}  ·  ${game.difficulty.title}", w, CREAM, INK)
+        lines += text(if (race.phase == Phase.GARAGE) "  ${game.circuit.route} · 3 laps / 6 racers · Best ${time(game.records.best(game.circuit, game.difficulty))}" else "  ${race.position}/6   Lap ${race.lap}/3   ${time(race.elapsed)}   ${(race.player.speed * 3.6f).roundToInt()} km/h   Nitro ${race.nitro.toInt()}%", w, CREAM, INK)
         val artHeight = (h - if (race.phase == Phase.GARAGE) 10 else 9) * 2
         val canvas = PixelCanvas(w, artHeight, INK)
         if (race.phase == Phase.GARAGE && game.overview) map(canvas, game) else road(canvas, game)
@@ -115,7 +115,7 @@ class TerminalRenderer {
         }
         lines += art
         if (race.phase == Phase.GARAGE) {
-            val labels = listOf("Circuit  < ${game.circuit.title} >", "Paint    < ${PAINT_NAMES[game.paint]} >", "Rivals   < ${game.difficulty.title} >", "Start race  [Enter]")
+            val labels = listOf("Circuit    < ${game.circuit.title} >", "Paint      < ${PAINT_NAMES[game.paint]} >", "Difficulty < ${game.difficulty.title} >", "Start race  [Enter]")
             labels.forEachIndexed { index, label -> lines += text(" ${if (game.menuFocus == index) "▶" else " "} $label", w, if (game.menuFocus == index) INK else CREAM, if (game.menuFocus == index) TEAL else INK) }
             lines += text("  ↑↓ / W S / Tab: select   ←→ / A D: change   P: preview", w)
         } else {

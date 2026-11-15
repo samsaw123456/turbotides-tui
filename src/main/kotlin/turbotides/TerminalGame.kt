@@ -13,7 +13,11 @@ class TerminalGame(val records: Records, private val telemetry: Path? = null) :
     AutoCloseable {
     var circuit = Circuit.entries.firstOrNull { it.name == records.setting("circuit", "SUNSET") } ?: Circuit.SUNSET
     var paint = records.setting("paint", "0").toIntOrNull()?.coerceIn(0, 4) ?: 0
-    var difficulty = Difficulty.entries.firstOrNull { it.name == records.setting("difficulty", "CRUISE") } ?: Difficulty.CRUISE
+    var difficulty = when (val stored = records.setting("difficulty", "EASY")) {
+        "CRUISE" -> Difficulty.EASY
+        "RACE" -> Difficulty.MEDIUM
+        else -> Difficulty.entries.firstOrNull { it.name == stored } ?: Difficulty.EASY
+    }
     var race = Race(Track(circuit), difficulty, paint)
     val input = TerminalInput()
     var width = 100
@@ -165,7 +169,7 @@ class TerminalGame(val records: Records, private val telemetry: Path? = null) :
     private fun change(direction: Int) {
         when (menuFocus) {
             1 -> paint = Math.floorMod(paint + direction, 5)
-            2 -> difficulty = if (difficulty == Difficulty.CRUISE) Difficulty.RACE else Difficulty.CRUISE
+            2 -> difficulty = Difficulty.entries[Math.floorMod(difficulty.ordinal + direction, Difficulty.entries.size)]
             else -> circuit = Circuit.entries[Math.floorMod(circuit.ordinal + direction, Circuit.entries.size)]
         }
         race = Race(Track(circuit), difficulty, paint)
@@ -223,6 +227,11 @@ class TerminalGame(val records: Records, private val telemetry: Path? = null) :
             "help" to help, "menuFocus" to menuFocus, "overview" to overview,
             "best" to records.best(circuit, difficulty), "saveError" to (records.error != null),
         )
+        race.rivals.forEachIndexed { index, rival ->
+            fields["rival${index}Distance"] = rival.distance
+            fields["rival${index}Speed"] = rival.speed
+            fields["rival${index}FinishTime"] = rival.finishTime
+        }
         val json = fields.entries.joinToString(",", "{", "}") { (k, v) -> "\"$k\":" + if (v is String) "\"$v\"" else v.toString() }
         var temporary: Path? = null
         try {

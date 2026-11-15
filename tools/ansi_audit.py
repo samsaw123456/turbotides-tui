@@ -50,6 +50,7 @@ BINDINGS = {
     "FocusOut": "\x1b[O",
     "FocusIn": "\x1b[I",
 }
+DIFFICULTIES = ["EASY", "MEDIUM", "HARD", "SUPER_HARD"]
 RESULTS: list[dict] = []
 
 
@@ -408,7 +409,7 @@ def garage_audit(terminal: Terminal) -> None:
             ],
         ),
         (1, "paint", list(range(5))),
-        (2, "difficulty", ["CRUISE", "RACE"]),
+        (2, "difficulty", DIFFICULTIES),
         (
             3,
             "circuit",
@@ -1490,7 +1491,7 @@ CIRCUITS = [
 
 def race_playthrough(
     circuit: str,
-    difficulty: str = "CRUISE",
+    difficulty: str = "EASY",
     result_key: str = "Enter",
     slow: bool = False,
 ) -> dict:
@@ -1505,7 +1506,8 @@ def race_playthrough(
             )
         if terminal.state()["difficulty"] != difficulty:
             focus(terminal, 2)
-            terminal.key("Right", 0.3)
+            while terminal.state()["difficulty"] != difficulty:
+                terminal.key("Right", 0.3)
         require(
             terminal.state()["circuit"] == circuit,
             "Selector did not choose requested circuit",
@@ -1665,7 +1667,7 @@ def quit_audit() -> None:
 
 
 def records_audit() -> None:
-    prior_dir = OUTPUT / "race-sunset-cruise" / "data"
+    prior_dir = OUTPUT / "race-sunset-easy" / "data"
     require(
         (prior_dir / "records.properties").exists(),
         "Run six-circuit campaign before records audit",
@@ -1756,6 +1758,11 @@ def contact_check(terminal: Terminal) -> None:
         collided and padded,
         "Expected both visible rival-impact and pad-pickup messages during real driving",
     )
+    # The diagnostic file updates at 10 Hz; the visible frame can arrive first.
+    terminal.wait_state(
+        lambda s: s["bumps"] > 0 and s["pads"] > 0,
+        "contact and pad counters after visible feedback",
+    )
     require(
         terminal.state()["bumps"] > 0 and terminal.state()["pads"] > 0,
         "Visible rewards did not agree with simulation counters",
@@ -1839,11 +1846,20 @@ def main() -> None:
     )
     parser.add_argument("--circuit", choices=CIRCUITS)
     parser.add_argument(
+        "--difficulty",
+        choices=DIFFICULTIES,
+        help="Rival level for a six-circuit race campaign",
+    )
+    parser.add_argument(
         "--opposite-pace",
         action="store_true",
-        help="Run each circuit at the other rival pace",
+        help="Alternate the Easy/Medium campaign (legacy audit option)",
     )
     args = parser.parse_args()
+    if args.difficulty and (args.group != "races" or args.opposite_pace):
+        parser.error(
+            "--difficulty requires --group races and cannot be combined with --opposite-pace"
+        )
     if args.group == "tail":
         terminal = Terminal("controls-tail")
         try:
@@ -1929,23 +1945,29 @@ def main() -> None:
             i = CIRCUITS.index(c)
             return race_playthrough(
                 c,
-                "CRUISE" if (i % 2 == 0) != args.opposite_pace else "RACE",
+                args.difficulty
+                or ("EASY" if (i % 2 == 0) != args.opposite_pace else "MEDIUM"),
                 ["Enter", "Esc", "G", "R", "Q", "Ctrl+C"][i],
             )
 
         with ThreadPoolExecutor(max_workers=3) as pool:
             results = list(pool.map(run, circuits))
-        (
-            OUTPUT / ("races-opposite.json" if args.opposite_pace else "races.json")
-        ).write_text(json.dumps(results, indent=2) + "\n")
-        (
-            OUTPUT
-            / (
+        race_file = (
+            f"races-{args.difficulty.lower()}.json"
+            if args.difficulty
+            else ("races-opposite.json" if args.opposite_pace else "races.json")
+        )
+        finish_file = (
+            f"finish-{args.difficulty.lower()}-results.json"
+            if args.difficulty
+            else (
                 "finish-results-opposite.json"
                 if args.opposite_pace
                 else "finish-results.json"
             )
-        ).write_text(json.dumps(RESULTS, indent=2) + "\n")
+        )
+        (OUTPUT / race_file).write_text(json.dumps(results, indent=2) + "\n")
+        (OUTPUT / finish_file).write_text(json.dumps(RESULTS, indent=2) + "\n")
         return
     terminal = Terminal("smoke" if args.smoke else "controls")
     try:

@@ -1,8 +1,11 @@
 # Turbo Tides TUI
 
 Keep the original Turbo Tides repository untouched. Race.kt and Track.kt are the
-authoritative original rules and geometry; terminal input and rendering adapt
-to them. Preserve orange, cream, teal and the original licensed art/audio.
+authoritative rules and geometry; terminal input and rendering adapt to them.
+The requested four AI difficulties extend the original rival behavior; preserve
+the player's original physics and track geometry. Easy/Medium/Hard/Super Hard
+must differ observably in real races, and Super Hard must remain beatable with
+skilled normal input. Preserve orange, cream, teal and licensed art/audio.
 
 Use JDK 25. Run `./gradlew ktlintFormat check fatJar` after Kotlin changes.
 Run `tools/ansi_audit.py` through a real PTY after input/rendering changes;
