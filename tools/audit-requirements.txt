@@ -1,0 +1,4 @@
+pexpect==4.9.0
+pyte==0.8.2
+Pillow==13.0.0
+ruff==0.17.5

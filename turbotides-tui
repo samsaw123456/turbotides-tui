@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+# Resolve symlinks so ~/.local/bin works from every working directory.
+launcher=$0
+while [ -L "$launcher" ]; do
+    launcher_dir=$(CDPATH='' cd -- "$(dirname -- "$launcher")" && pwd)
+    launcher_link=$(readlink "$launcher")
+    case "$launcher_link" in /*) launcher=$launcher_link ;; *) launcher=$launcher_dir/$launcher_link ;; esac
+done
+app_dir=$(CDPATH='' cd -- "$(dirname -- "$launcher")" && pwd)
+# shellcheck source=scripts/java.sh
+. "$app_dir/scripts/java.sh"
+if ! find_java_25; then
+    printf '%s\n' 'Java 25 is required. Run ./install.sh, or set TURBOTIDES_JAVA_HOME to your JDK 25.' >&2
+    exit 1
+fi
+if [ -f "$app_dir/turbotides-tui.jar" ]; then
+    game_jar=$app_dir/turbotides-tui.jar
+elif [ -x "$app_dir/gradlew" ]; then
+    if ! find_java_25 jdk; then
+        printf '%s\n' 'Building from source requires JDK 25. Run ./install.sh --local to install dependencies.' >&2
+        exit 1
+    fi
+    JAVA_HOME=${TURBOTIDES_JAVA%/bin/java} "$app_dir/gradlew" -p "$app_dir" --quiet fatJar
+    game_jar=$app_dir/build/libs/turbotides-tui.jar
+else
+    printf '%s\n' 'The game JAR is missing. Run the installer again to repair the installation.' >&2
+    exit 1
+fi
+exec "$TURBOTIDES_JAVA" --enable-native-access=ALL-UNNAMED -Xms32m -Xmx384m -jar "$game_jar" "$@"

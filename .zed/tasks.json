@@ -1,0 +1,4 @@
+[
+  { "label": "Play Turbo Tides TUI", "command": "./turbotides-tui", "use_new_terminal": true },
+  { "label": "Check Turbo Tides TUI", "command": "./gradlew check fatJar" }
+]

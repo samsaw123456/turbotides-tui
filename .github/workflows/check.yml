@@ -1,0 +1,31 @@
+name: Verify
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.3.0
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6.4.1
+      - run: ./gradlew --no-daemon check fatJar
+      - run: java -jar build/libs/turbotides-tui.jar --version
+      - run: java -jar build/libs/turbotides-tui.jar --help
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.13'
+      - run: pip install -r tools/audit-requirements.txt
+      - run: ruff check tools && ruff format --check tools
+      - run: python tools/ansi_audit.py --smoke
+      - run: python3 tools/package_release.py --skip-build
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: turbotides-${{ matrix.os }}
+          path: dist/*
